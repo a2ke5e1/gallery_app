@@ -5,9 +5,12 @@
  * @format
  */
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
+import {Platform} from 'react-native';
 import type {PropsWithChildren} from 'react';
 import {
+  Button,
+  PermissionsAndroid,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -24,6 +27,8 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+
+import RNFS from 'react-native-fs';
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -55,12 +60,53 @@ function Section({children, title}: SectionProps): React.JSX.Element {
   );
 }
 
+const requestCameraPermission = async () => {
+  try {
+    const isAndroid = Platform.OS === 'android';
+    const isAndroid13 = Platform.Version > '32';
+
+    if (!isAndroid) {
+      return;
+    }
+
+    const granted = await PermissionsAndroid.request(
+      isAndroid13
+        ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+        : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+    );
+
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log('You can use the storage');
+    } else {
+      console.log('storage permission denied');
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+};
+
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
+
+  const [directories, setDirectories] = useState<string[]>([]);
+
+  useEffect(() => {
+    // requestCameraPermission()
+    const directoryPath = RNFS.ExternalStorageDirectoryPath;
+    console.log(`absolute path: ${directoryPath}`);
+    RNFS.readdir(`${directoryPath}/Pictures/Screenshots`)
+      .then(files => {
+        setDirectories(files);
+        console.log(`Debug: ${files}`);
+      })
+      .catch(error => {
+        console.log('Error reading directory:', error);
+      });
+  }, []);
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -71,26 +117,10 @@ function App(): React.JSX.Element {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
+        {directories.map((dir, index) => (
+          <Text key={index}>{dir}</Text>
+        ))}
+        <Button onPress={requestCameraPermission} title="Test" />
       </ScrollView>
     </SafeAreaView>
   );
