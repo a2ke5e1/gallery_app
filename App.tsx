@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {
+  Alert,
   Button,
   Dimensions,
   FlatList,
@@ -11,6 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableHighlight,
   useColorScheme,
   View,
 } from 'react-native';
@@ -59,10 +61,13 @@ function App(): React.JSX.Element {
   };
 
   const [data, setData] = useState<DataProp[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalImagePath, setModalImagePath] = useState<string | null>(null);
+
 
   useEffect(() => {
     requestStoragePermission();
-    recursiveFolders();       
+    recursiveFolders();
   }, []);
 
   const getAllFiles = async (dir: string, fileList: string[] = []) => {
@@ -79,23 +84,33 @@ function App(): React.JSX.Element {
 
       return fileList;
     } catch (error) {
-      console.error('Error reading directory:', error);
+      //console.error('Error reading directory:', error);
     }
   };
 
   function recursiveFolders() {
     getAllFiles(directoryPath)
       .then(allFiles => {
-          const x = allFiles?.map((fileName, index) => ({
-            id: index.toString(),
-            value: fileName
-          }));
-          setData(x  ?? []); 
+        const x = allFiles?.map((fileName, index) => ({
+          id: index.toString(),
+          value: fileName,
+        }));
+        setData(x ?? []);
       })
       .catch(error => {
         console.error('Error scanning files:', error);
       });
   }
+
+  const createAlert = (title: string, message: string) =>
+    Alert.alert(title, message, [
+      {
+        text: 'Cancel',
+        onPress: () => console.log('Cancel Pressed'),
+        style: 'cancel',
+      },
+      {text: 'OK', onPress: () => console.log('OK Pressed')},
+    ]);
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -115,12 +130,16 @@ function App(): React.JSX.Element {
         data={data}
         renderItem={({item}) => (
           <View style={styles.itemContainer}>
-            <Image
+            <TouchableHighlight
               style={styles.item}
-              source={{
-                uri: `file:///${item.value}`,
-              }}
-            />
+              onPress={() => createAlert("Info", item.value)}>
+              <Image
+                style={styles.item}
+                source={{
+                  uri: `file:///${item.value}`,
+                }}
+              />
+            </TouchableHighlight>
           </View>
         )}
         keyExtractor={item => item.id}
