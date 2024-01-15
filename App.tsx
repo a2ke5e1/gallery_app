@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {
+  Button,
   Dimensions,
   FlatList,
   Image,
@@ -9,6 +10,7 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Text,
   useColorScheme,
   View,
 } from 'react-native';
@@ -59,23 +61,41 @@ function App(): React.JSX.Element {
   const [data, setData] = useState<DataProp[]>([]);
 
   useEffect(() => {
-    console.log(`absolute path: ${directoryPath}`);
-    RNFS.readDir(`${directoryPath}/Pictures/Screenshots`)
-      .then(files => {
-        const x = files
-          .filter(item => item.isFile())
-          .map((item, index) => {
-            return {
-              id: index.toString(),
-              value: item.name,
-            };
-          });
-        setData(x);
+    requestStoragePermission();
+    recursiveFolders();       
+  }, []);
+
+  const getAllFiles = async (dir: string, fileList: string[] = []) => {
+    try {
+      const files = await RNFS.readDir(dir);
+
+      for (const file of files) {
+        if (file.isDirectory()) {
+          await getAllFiles(file.path, fileList);
+        } else {
+          fileList.push(file.path);
+        }
+      }
+
+      return fileList;
+    } catch (error) {
+      console.error('Error reading directory:', error);
+    }
+  };
+
+  function recursiveFolders() {
+    getAllFiles(directoryPath)
+      .then(allFiles => {
+          const x = allFiles?.map((fileName, index) => ({
+            id: index.toString(),
+            value: fileName
+          }));
+          setData(x  ?? []); 
       })
       .catch(error => {
-        console.log('Error reading directory:', error);
+        console.error('Error scanning files:', error);
       });
-  }, []);
+  }
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -83,25 +103,29 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <FlatList
-          data={data}
-          renderItem={({item}) => (
-            <View style={styles.itemContainer}>
-              <Image
-                style={styles.item}
-                source={{
-                  uri: `file:///${directoryPath}/Pictures/Screenshots/${item.value}`,
-                }}
-              />
-            </View>
-          )}
-          keyExtractor={item => item.id}
-          numColumns={numColumns}
-        />
-      </ScrollView>
+      <Text
+        style={{
+          padding: 10,
+          fontSize: 18,
+          color: '#000000',
+        }}>
+        Gallery App
+      </Text>
+      <FlatList
+        data={data}
+        renderItem={({item}) => (
+          <View style={styles.itemContainer}>
+            <Image
+              style={styles.item}
+              source={{
+                uri: `file:///${item.value}`,
+              }}
+            />
+          </View>
+        )}
+        keyExtractor={item => item.id}
+        numColumns={numColumns}
+      />
     </SafeAreaView>
   );
 }
